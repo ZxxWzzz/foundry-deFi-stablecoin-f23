@@ -28,24 +28,23 @@ contract DscEngineTest is Test {
         deployer = new DeployDSC();
         (dsc, dscEngine, config) = deployer.run();
 
-        // (address wethUsdPriceFeed, address wbtcUsdPriceFeed, address weth, address wbtc, uint256 deployerKey) =
-        //     config.activeNetworkConfig();
         (ethUsdPriceFeed,, weth,,) = config.activeNetworkConfig();
-        // mkA = new MockV3Aggregator(8, 3000e8);
+
+        // 打印价格以确认映射正确
+        MockV3Aggregator ethPriceFeed = MockV3Aggregator(ethUsdPriceFeed);
+        int256 ethPrice = ethPriceFeed.latestAnswer();
+        console.log("ETH/USD Price in setUp:", uint256(ethPrice));
+
+        // // 类似地检查 BTC 价格
+        // MockV3Aggregator btcPriceFeed = MockV3Aggregator(btcUsdPriceFeed);
+        // int256 btcPrice = btcPriceFeed.latestAnswer();
+        // console.log("BTC/USD Price in setUp:", uint256(btcPrice));
     }
 
     function testGetUsdValueOfEth() public {
-        HelperConfig.NetworkConfig memory networkConfig = config.getAnvilNetworkConfig();
-
-        // int256 wbtcPrice = MockV3Aggregator(networkConfig.wbtcUsdPriceFeed).latestAnswer();
-        // console.log("WBTC/USD Price:", uint256(wbtcPrice));
-
-        // int256 wethPrice = MockV3Aggregator(networkConfig.wethUsdPriceFeed).latestAnswer();
-        // console.log("WETH/USD Price:", uint256(wethPrice));
-
-        // uint256 ethAmount = 15e18;
-        // uint256 expectedUsd = 45_000e18;
-        // uint256 usdValue = dscEngine.getUsdValue(weth, ethAmount);
-        // assertEq(usdValue, expectedUsd);
+        uint256 ethAmount = 15e18;
+        uint256 expectedUsd = 45_000e18;
+        uint256 usdValue = dscEngine.getUsdValue(weth, ethAmount);
+        assertEq(usdValue, expectedUsd);
     }
 }

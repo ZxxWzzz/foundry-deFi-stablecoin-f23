@@ -7,8 +7,8 @@ import {ERC20Mock} from "../test/mocks/ERC20Mock.sol";
 
 contract HelperConfig is Script {
     struct NetworkConfig {
-        address wbtcUsdPriceFeed;
         address wethUsdPriceFeed;
+        address wbtcUsdPriceFeed;
         address wbtc;
         address weth;
         uint256 deployerKey;
@@ -54,7 +54,7 @@ contract HelperConfig is Script {
         vm.stopBroadcast();
 
         anvilNetworkConfig = NetworkConfig({
-            wethUsdPriceFeed: address(ethUsdPriceFeed), // ETH / USD
+            wethUsdPriceFeed: address(ethUsdPriceFeed),
             weth: address(wethMock),
             wbtcUsdPriceFeed: address(btcUsdPriceFeed),
             wbtc: address(wbtcMock),
