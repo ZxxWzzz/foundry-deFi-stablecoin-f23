@@ -12,13 +12,14 @@ import {DSCEngine} from "../../src/DSCEngine.sol";
 contract DscEngineTest is Test {
     DeployDSC deployer;
     HelperConfig config;
-    MockV3Aggregator mkA;
 
     DecentralizedStableCoin dsc;
     DSCEngine dscEngine;
 
     address ethUsdPriceFeed;
     address weth;
+    address btcUsdPriceFeed;
+    address wbtc;
 
     // address wbtcUsdPriceFeed;
 
@@ -29,22 +30,19 @@ contract DscEngineTest is Test {
 
         // (address wethUsdPriceFeed, address wbtcUsdPriceFeed, address weth, address wbtc, uint256 deployerKey) =
         //     config.activeNetworkConfig();
-        (ethUsdPriceFeed, weth,,,) = config.activeNetworkConfig();
+        (ethUsdPriceFeed,, weth,,) = config.activeNetworkConfig();
         // mkA = new MockV3Aggregator(8, 3000e8);
     }
 
     function testGetUsdValueOfEth() public {
-        // 获取 ETH/USD 和 WETH 价格
-        int256 ethPrice = MockV3Aggregator(ethUsdPriceFeed).latestAnswer();
-        int256 wethPrice = MockV3Aggregator(weth).latestAnswer(); // 假设 WETH 也有价格预言机
+        HelperConfig.NetworkConfig memory networkConfig = config.getAnvilNetworkConfig();
 
-        // 打印 ETH/USD 价格
-        console.log("ETH/USD Price:", uint256(ethPrice));
+        // int256 wbtcPrice = MockV3Aggregator(networkConfig.wbtcUsdPriceFeed).latestAnswer();
+        // console.log("WBTC/USD Price:", uint256(wbtcPrice));
 
-        // 打印 WETH 价格
-        console.log("WETH Price:", uint256(wethPrice));
+        // int256 wethPrice = MockV3Aggregator(networkConfig.wethUsdPriceFeed).latestAnswer();
+        // console.log("WETH/USD Price:", uint256(wethPrice));
 
-        // 你可以继续添加其他测试逻辑
         // uint256 ethAmount = 15e18;
         // uint256 expectedUsd = 45_000e18;
         // uint256 usdValue = dscEngine.getUsdValue(weth, ethAmount);
