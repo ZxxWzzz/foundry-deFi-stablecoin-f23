@@ -62,6 +62,7 @@ contract HelperConfig is Script {
         });
     }
 
+    //for test
     function getAnvilNetworkConfig() external view returns (NetworkConfig memory) {
         return activeNetworkConfig;
     }
