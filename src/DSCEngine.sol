@@ -366,7 +366,7 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     function getAdditionalFeedPrecision() public returns (uint256) {
-        return FEED_PRECISION;
+        return ADDITIONAL_FEED_PRECISION;
     }
 
     function getPrecision() public returns (uint256) {

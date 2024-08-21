@@ -25,6 +25,8 @@ contract DscEngineTest is Test {
     address public user = address(1);
 
     uint256 amountCollateral = 10 ether;
+    uint256 amountToMint = 100e8;
+
     uint256 public constant STARTING_USER_BALANCE = 100 ether;
 
     // address wbtcUsdPriceFeed;
@@ -60,8 +62,8 @@ contract DscEngineTest is Test {
 
     function testGetTokenFromUsd() public {
         // If we want $100 of WETH @ $3000/WETH, that would be 0.3 WETH
-        uint256 expectedWeth = 0.1 ether;
-        uint256 amountWeth = dsce.getTokenFromUsd(weth, 300 ether);
+        uint256 expectedWeth = 1 ether;
+        uint256 amountWeth = dsce.getTokenFromUsd(weth, 3000 ether);
         assertEq(amountWeth, expectedWeth);
     }
 
@@ -174,12 +176,10 @@ contract DscEngineTest is Test {
     }
 
     function testMintDSC_FailsDueToHealthFactor() public depositedCollateral {
-        // 预期调用会因为健康因子不足而失败
-        // 0xe580cc610000000000000000000000000000000000000000000000000214e991cc2b7a56
         (, int256 price,,,) = MockV3Aggregator(ethUsdPriceFeed).latestRoundData();
-        uint256 amountToMint =
-            (amountCollateral * (uint256(price) * dsce.getAdditionalFeedPrecision())) / dsce.getPrecision();
-        console.log(amountCollateral);
+        amountToMint = (amountCollateral * (uint256(price) * dsce.getAdditionalFeedPrecision())) / dsce.getPrecision();
+        console.log(amountToMint);
+
         vm.startPrank(user);
         uint256 expectedHealthFactor =
             dsce.getCalculateHealthFactor(amountToMint, dsce.getUsdValue(weth, amountCollateral));
