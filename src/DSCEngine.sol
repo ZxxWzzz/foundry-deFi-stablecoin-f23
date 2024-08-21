@@ -268,8 +268,6 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
-    function getHealthFactor() external view {}
-
     //////////////////////////////
     // Private & Internal View & Pure Functions
     //////////////////////////////
@@ -340,5 +338,38 @@ contract DSCEngine is ReentrancyGuard {
             totalCollateralValueInUsd += getUsdValue(token, amount);
         }
         return totalCollateralValueInUsd;
+    }
+
+    function getAccountInformation(address user)
+        external
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        (totalDscMinted, collateralValueInUsd) = _getAccountInformation(user);
+    }
+
+    function getDSCMinted(address user) external view returns (uint256 dscQuantity) {
+        return s_DSCMinted[user];
+    }
+
+    //HealthFactor
+    function getHealthFactor(address user) external view returns (uint256 healthFactor) {
+        return _healthFactor(user);
+    }
+
+    function getCalculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd)
+        external
+        view
+        returns (uint256 healthFactor)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
+    function getAdditionalFeedPrecision() public returns (uint256) {
+        return FEED_PRECISION;
+    }
+
+    function getPrecision() public returns (uint256) {
+        return MIN_HEALTH_FACTOR;
     }
 }
