@@ -23,9 +23,10 @@ contract DscEngineTest is Test {
     address wbtc;
 
     address public user = address(1);
+    address public user2 = address(2);
 
     uint256 amountCollateral = 10 ether;
-    uint256 amountToMint = 100e8;
+    uint256 amountToMint = 100 ether;
 
     uint256 public constant STARTING_USER_BALANCE = 100 ether;
 
@@ -43,7 +44,42 @@ contract DscEngineTest is Test {
         }
         ERC20Mock(weth).mint(user, STARTING_USER_BALANCE);
         ERC20Mock(wbtc).mint(user, STARTING_USER_BALANCE);
+
+        ERC20Mock(weth).mint(user2, STARTING_USER_BALANCE);
+        ERC20Mock(wbtc).mint(user2, STARTING_USER_BALANCE);
     }
+
+    ///////////////////////////////////
+    // modifier //
+    ///////////////////////////////////
+
+    modifier depositedCollateral() {
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dsce), amountCollateral);
+        uint256 allowance = ERC20Mock(weth).allowance(user, address(dsce));
+        dsce.depositCollateral(weth, amountCollateral);
+        vm.stopPrank();
+        _;
+    }
+
+    modifier depositCollateralAndMintDSC() {
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dsce), amountCollateral);
+        dsce.depositCollateralAndMintDSC(weth, amountCollateral, amountToMint);
+        vm.stopPrank();
+        _;
+    }
+
+    modifier liqudateDepositedCollateral() {
+        vm.startPrank(user2);
+        ERC20Mock(weth).approve(address(dsce), amountCollateral);
+        //100 *150 = 15000
+        dsce.depositCollateralAndMintDSC(weth, amountCollateral, amountToMint * 150);
+        MockV3Aggregator(ethUsdPriceFeed).updateAnswer(2500 * 10 ** 8); // 将ETH价格降低到1000美元
+        vm.stopPrank();
+        _;
+    }
+
     ///////////////////////
     // Constructor Tests //
     ///////////////////////
@@ -97,15 +133,6 @@ contract DscEngineTest is Test {
         vm.expectRevert(DSCEngine.DSCEngine__NotAllowToken.selector);
         dsce.depositCollateral(address(randToken), amountCollateral);
         vm.stopPrank();
-    }
-
-    modifier depositedCollateral() {
-        vm.startPrank(user);
-        ERC20Mock(weth).approve(address(dsce), amountCollateral);
-        uint256 allowance = ERC20Mock(weth).allowance(user, address(dsce));
-        dsce.depositCollateral(weth, amountCollateral);
-        vm.stopPrank();
-        _;
     }
 
     function testCanDepositCollateralAndGetAccount() public depositedCollateral {
@@ -185,6 +212,91 @@ contract DscEngineTest is Test {
             dsce.getCalculateHealthFactor(amountToMint, dsce.getUsdValue(weth, amountCollateral));
         vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__BreaksHealthFactor.selector, expectedHealthFactor));
         dsce.mintDSC(amountToMint);
+        vm.stopPrank();
+    }
+
+    ///////////////////////////////////
+    // BurnsDsc Tests //
+    ///////////////////////////////////
+    function testBurnDsc_ZeroAmount() public {
+        uint256 burnAmount = 0;
+
+        // 尝试销毁 0 个 DSC
+        vm.startPrank(user);
+        vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
+        dsce.burnDsc(burnAmount);
+        vm.stopPrank();
+    }
+
+    function testBurnDsc_MoreThanUser() public depositedCollateral {
+        vm.prank(user);
+        vm.expectRevert();
+        dsce.burnDsc(1);
+    }
+
+    function testCanBurnDsc() public depositCollateralAndMintDSC {
+        vm.startPrank(user);
+        dsc.approve(address(dsce), amountToMint);
+        dsce.burnDsc(amountToMint);
+        vm.stopPrank();
+
+        uint256 userBalance = dsc.balanceOf(user);
+        assertEq(userBalance, 0);
+    }
+
+    ///////////////////////////////////
+    // redeemCollateral Tests //
+    //////////////////////////////////
+    function testRedeemCollateralForDSC() public depositCollateralAndMintDSC {
+        uint256 amountCollateral = 5 ether;
+        uint256 amountDscToBurn = 5 ether;
+
+        uint256 expectedDscBalance = dsce.getDSCMinted(user) - amountDscToBurn;
+        uint256 accountCollateralValue = dsce.getAccountCollateralValue(user);
+        (, int256 price,,,) = MockV3Aggregator(ethUsdPriceFeed).latestRoundData();
+        uint256 amountDscToBurnValue =
+            (amountDscToBurn * (uint256(price) * dsce.getAdditionalFeedPrecision())) / dsce.getPrecision();
+
+        vm.startPrank(user);
+        dsc.approve(address(dsce), amountDscToBurn);
+        dsce.redeemCollateralForDSC(weth, amountCollateral, amountDscToBurn);
+        vm.stopPrank();
+
+        assertEq(expectedDscBalance, dsce.getDSCMinted(user));
+        assertEq(dsce.getAccountCollateralValue(user), accountCollateralValue - amountDscToBurnValue);
+    }
+
+    ///////////////////////////////////
+    // Liquidate Tests //
+    ///////////////////////////////////
+    function testliqudate_healthFactorOK() public depositedCollateral {
+        uint256 debtToCover = 1 ether;
+
+        // 获取当前健康因子，确认它是OK的
+        uint256 currentHealthFactor = dsce.getHealthFactor(user);
+        assert(currentHealthFactor >= dsce.getMIN_HEALTH_FACTOR());
+
+        // 尝试清算，预期应当失败并抛出HealthFactorOK错误
+        vm.startPrank(user);
+        vm.expectRevert(DSCEngine.HealthFactorOK.selector);
+        dsce.liquidate(weth, user, debtToCover);
+        vm.stopPrank();
+    }
+
+    function testLiquidate_Success() public liqudateDepositedCollateral {
+        console.log(dsce.getHealthFactor(user2));
+
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dsce), 100 ether);
+        dsce.depositCollateralAndMintDSC(weth, 100 ether, 30000 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        dsc.approve(address(dsce), 30000 ether);
+        dsce.liquidate(weth, user2, 8000 ether); // 清算操作
+        console.log(dsce.getHealthFactor(user2));
+        assert(dsce.getHealthFactor(user2) >= dsce.getMIN_HEALTH_FACTOR());
+
         vm.stopPrank();
     }
 }

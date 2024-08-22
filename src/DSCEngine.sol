@@ -288,7 +288,7 @@ contract DSCEngine is ReentrancyGuard {
         moreThanZero(amountDscToBurn)
     {
         s_DSCMinted[onBehalfOf] -= amountDscToBurn;
-        bool success = i_dsc.transferFrom(dcsFrom, onBehalfOf, amountDscToBurn);
+        bool success = i_dsc.transferFrom(dcsFrom, address(this), amountDscToBurn);
         if (!success) {
             revert DSCEngine__TransFerFailed();
         }
@@ -370,6 +370,30 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     function getPrecision() public returns (uint256) {
+        return PRECISION;
+    }
+
+    function getMIN_HEALTH_FACTOR() public returns (uint256) {
         return MIN_HEALTH_FACTOR;
+    }
+
+    //未测试
+    function calculateRequiredDebtToCover(address user) public view returns (uint256) {
+        uint256 currentHealthFactor = _healthFactor(user);
+        uint256 targetHealthFactor = MIN_HEALTH_FACTOR;
+
+        if (currentHealthFactor >= targetHealthFactor) {
+            revert HealthFactorOK();
+        }
+
+        uint256 totalDebt = s_DSCMinted[user];
+        uint256 collateralValueInUsd = getAccountCollateralValue(user);
+
+        // 假设 LIQUIDATION_THRESHOLD 是 75%
+        uint256 requiredCollateralValueInUsd = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        uint256 requiredDebtToCover = (requiredCollateralValueInUsd * targetHealthFactor) / currentHealthFactor;
+
+        // 返回需要清算的债务量，确保不超过用户的总债务
+        return requiredDebtToCover > totalDebt ? totalDebt : requiredDebtToCover;
     }
 }
