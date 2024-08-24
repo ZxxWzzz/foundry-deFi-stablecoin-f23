@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import {Test, console} from "forge-std/Test.sol";
@@ -298,5 +298,81 @@ contract DscEngineTest is Test {
         assert(dsce.getHealthFactor(user2) >= dsce.getMIN_HEALTH_FACTOR());
 
         vm.stopPrank();
+    }
+
+    // function testLiquidate_SuccessReward() public liqudateDepositedCollateral {
+    //     vm.startPrank(user);
+
+    //     // 清算前记录账户状态
+    //     uint256 initialWethBalance = ERC20Mock(weth).balanceOf(user);
+    //     uint256 initialCollateralValue = dsce.getAccountCollateralValue(user);
+    //     console.log("Initial WETH Balance:", initialWethBalance);
+    //     console.log("Initial Collateral Value:", initialCollateralValue);
+
+    //     // 进行存款和铸造操作
+    //     ERC20Mock(weth).approve(address(dsce), 100 ether);
+    //     dsce.depositCollateralAndMintDSC(weth, 100 ether, 5000 ether);
+
+    //     // 再次记录清算前的账户状态
+    //     uint256 preLiquidateWethBalance = ERC20Mock(weth).balanceOf(user);
+    //     uint256 preLiquidateCollateralValue = dsce.getAccountCollateralValue(user);
+    //     console.log("Pre-Liquidate WETH Balance:", preLiquidateWethBalance);
+    //     console.log("Pre-Liquidate Collateral Value:", preLiquidateCollateralValue);
+
+    //     vm.stopPrank();
+
+    //     // 进行清算操作
+    //     vm.startPrank(user);
+    //     dsc.approve(address(dsce), 5000 ether);
+    //     dsce.liquidate(weth, user2, 5000 ether);
+
+    //     // 清算后的账户状态
+    //     uint256 finalWethBalance = ERC20Mock(weth).balanceOf(user);
+    //     uint256 finalCollateralValue = dsce.getAccountCollateralValue(user);
+    //     console.log("Final WETH Balance:", finalWethBalance);
+    //     console.log("Final Collateral Value:", finalCollateralValue);
+
+    //     vm.stopPrank();
+
+    //     // 计算并验证奖励
+    //     // uint256 expectedReward = /* 根据你的清算奖励比例和债务来计算 */;
+    //     // uint256 actualReward = finalWethBalance - preLiquidateWethBalance;
+    //     // assertEq(actualReward, expectedReward, "清算奖励发放不正确");
+    // }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // External & Public View & Pure Functions TesT
+    ////////////////////////////////////////////////////////////////////////////
+
+    function testgetAccountCollateralValue() public depositedCollateral {
+        // 获取用户的抵押品总价值
+        uint256 collateralValue = dsce.getAccountCollateralValue(user);
+
+        // 假设 WETH 的价格为 $3000，用户存入了 10 个 WETH
+        uint256 ethUsdPrice = 3000 ether; // ETH 价格为 3000 USD
+        uint256 expectedCollateralValue = amountCollateral * ethUsdPrice / 1 ether;
+
+        // 检查实际返回的抵押品总价值是否与预期值一致
+        assertEq(collateralValue, expectedCollateralValue);
+    }
+
+    function testGetAccountInformation() public depositedCollateral {
+        // 用户铸造了一定数量的 DSC（假设为 100 ether）
+        uint256 mintedDSC = 100 ether;
+
+        vm.startPrank(user);
+        dsce.mintDSC(mintedDSC);
+        vm.stopPrank();
+
+        // 获取用户的铸造数量和抵押品总价值
+        (uint256 totalDscMinted, uint256 collateralValueInUsd) = dsce.getAccountInformation(user);
+
+        // 假设 WETH 的价格为 $3000，用户存入了 10 个 WETH
+        uint256 ethUsdPrice = 3000 ether;
+        uint256 expectedCollateralValue = amountCollateral * ethUsdPrice / 1 ether;
+
+        // 验证铸造的 DSC 数量和抵押品总价值
+        assertEq(totalDscMinted, mintedDSC);
+        assertEq(collateralValueInUsd, expectedCollateralValue);
     }
 }
